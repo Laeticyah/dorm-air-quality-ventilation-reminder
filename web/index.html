@@ -5,26 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>宿舍空气质量监测台</title>
   <style>
-    :root{--ink:#17324d;--muted:#65758b;--teal:#1d8a78;--teal-soft:#d9f0ea;--orange:#e9983d;--orange-soft:#fff0d7;--red:#d75a5a;--red-soft:#fbe3e3;--blue:#3d78b2;--line:#d9e2ec;--bg:#f4f8fa;--card:#fff}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Microsoft YaHei",sans-serif}
-    header{background:var(--ink);color:#fff;padding:1.2rem max(1rem,calc((100vw - 1180px)/2));display:flex;justify-content:space-between;align-items:center;gap:1rem}
-    header h1{font-size:1.25rem;margin:0}header p{font-size:.82rem;margin:.25rem 0 0;color:#b9c9d5}
-    main{max-width:1180px;margin:0 auto;padding:1.3rem 1rem 2.5rem}.toolbar,.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px #17324d0b}
-    .toolbar{padding:.8rem;display:flex;flex-wrap:wrap;gap:.65rem;align-items:center;margin-bottom:1rem}.toolbar label{font-size:.85rem;color:var(--muted)}
+    :root{--ink:#17324d;--muted:#667789;--teal:#1d8a78;--teal-soft:#e4f2ee;--orange:#d8892d;--orange-soft:#fff2dc;--red:#c94e4e;--red-soft:#fbe8e8;--blue:#3d78b2;--line:#cbd6df;--bg:#edf1f4;--card:#fff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:"Microsoft YaHei","SimSun",Arial,sans-serif;font-size:14px}
+    header{height:64px;background:#24445d;color:#fff;padding:0 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1d8a78}
+    header h1{font-size:20px;margin:0;font-weight:600}header p{font-size:12px;margin:3px 0 0;color:#c5d3dd}
+    .layout{display:flex;min-height:calc(100vh - 64px)}.sidebar{width:205px;background:#fff;border-right:1px solid var(--line);padding:16px 0}.sidebar-title{padding:0 18px 12px;color:#8a98a6;font-size:12px;border-bottom:1px solid #e6ebef}.nav-item{display:block;padding:12px 18px;color:#445a6d;text-decoration:none;border-left:3px solid transparent;cursor:pointer}.nav-item:hover,.nav-item.active{background:#eaf4f1;color:var(--teal);border-left-color:var(--teal)}
+    main{flex:1;max-width:1250px;margin:0 auto;padding:20px 24px 36px}.breadcrumb{color:var(--muted);font-size:12px;margin-bottom:14px}.toolbar,.card{background:var(--card);border:1px solid var(--line);border-radius:3px;box-shadow:0 1px 3px #17324d12}
+    .toolbar{padding:11px 13px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}.toolbar label{font-size:13px;color:var(--muted)}
     select,input,button{font:inherit;border:1px solid var(--line);border-radius:8px;padding:.5rem .65rem;background:#fff;color:var(--ink)}button{cursor:pointer;background:var(--teal);color:#fff;border-color:var(--teal)}button.secondary{background:#fff;color:var(--ink)}button.danger{background:#fff;color:var(--red);border-color:#f0b5b5}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}.card{padding:1rem}.card h2,.card h3{margin:.1rem 0 .7rem}.card h2{font-size:1rem}.card h3{font-size:1rem}
-    .overview{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1rem}.overview-card{padding:.9rem 1rem;border:1px solid var(--line);border-radius:12px;background:#fff}.overview-label{font-size:.76rem;color:var(--muted)}.overview-value{font-size:1.55rem;font-weight:800;margin-top:.25rem}.overview-value.good{color:var(--teal)}.overview-value.warn{color:var(--orange)}.overview-value.bad{color:var(--red)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}.card{padding:15px}.card h2,.card h3{margin:.1rem 0 .7rem}.card h2{font-size:16px}.card h3{font-size:15px}
+    .overview{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.overview-card{padding:14px 16px;border:1px solid var(--line);border-top:3px solid var(--teal);background:#fff}.overview-label{font-size:13px;color:var(--muted)}.overview-value{font-size:24px;font-weight:700;margin-top:7px}.overview-value.good{color:var(--teal)}.overview-value.warn{color:var(--orange)}.overview-value.bad{color:var(--red)}
     .metric{font-size:2rem;font-weight:800;color:var(--teal)}.meta{color:var(--muted);font-size:.86rem;line-height:1.7}.status{border-radius:999px;padding:.25rem .55rem;font-size:.78rem;background:var(--teal-soft);color:var(--teal)}.status.warn{background:var(--orange-soft);color:var(--orange)}.status.offline{background:var(--red-soft);color:var(--red)}
-    .section{margin-top:1rem}.section-title{display:flex;justify-content:space-between;align-items:center;gap:1rem}.section-title h2{font-size:1.05rem}
-    canvas{width:100%;height:280px;background:#fff;border:1px solid var(--line);border-radius:10px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:.62rem;border-bottom:1px solid #e8eef3;font-size:.86rem}th{color:var(--muted);font-weight:600}
+    .section{margin-top:14px}.section-title{display:flex;justify-content:space-between;align-items:center;gap:1rem;border-bottom:1px solid #e6ebef;padding-bottom:10px;margin-bottom:12px}.section-title h2{font-size:16px}
+    canvas{width:100%;height:280px;background:#fff;border:1px solid var(--line);border-radius:2px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #e3e9ee;font-size:13px}th{color:#536a7b;font-weight:600;background:#f3f6f8}tbody tr:hover{background:#f8fbfc}
     .alarm-high{color:var(--red);font-weight:700}.alarm-mid{color:var(--orange);font-weight:700}.empty{color:var(--muted);padding:.8rem 0}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem}.form-grid label{display:flex;flex-direction:column;gap:.25rem;color:var(--muted);font-size:.78rem}.notice{font-size:.82rem;color:var(--muted);margin:.65rem 0 0}
-    .toast{position:fixed;right:1rem;bottom:1rem;z-index:5;max-width:320px;padding:.75rem 1rem;border-radius:10px;background:var(--ink);color:#fff;box-shadow:0 8px 24px #17324d33;opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateY(0)}.toast.error{background:var(--red)}
-    @media(max-width:800px){.overview{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){header{display:block}.toolbar>*{width:100%}.toolbar button{width:auto}.overview{grid-template-columns:repeat(2,1fr)}}
+    .toast{position:fixed;right:20px;bottom:20px;z-index:5;max-width:320px;padding:11px 16px;border-radius:3px;background:var(--ink);color:#fff;box-shadow:0 4px 12px #17324d33;opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateY(0)}.toast.error{background:var(--red)}
+    @media(max-width:800px){.sidebar{width:56px}.sidebar-title{display:none}.nav-item{font-size:0;text-align:center;padding:14px 0}.nav-item::first-letter{font-size:18px}.overview{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){header{height:auto;min-height:64px;padding:12px 14px}.layout{display:block}.sidebar{width:100%;height:auto;padding:0;display:flex;border-right:0;border-bottom:1px solid var(--line)}.sidebar-title{display:none}.nav-item{font-size:12px;padding:9px 12px;border-left:0;border-bottom:3px solid transparent}.nav-item.active{border-left:0;border-bottom-color:var(--teal)}main{padding:14px 10px 24px}.toolbar>*{width:100%}.toolbar button{width:auto}.overview{grid-template-columns:repeat(2,1fr)}}
   </style>
 </head>
 <body>
-<header><div><h1>宿舍空气质量监测台</h1><p>本地优先 · MQTT可选 · 数据可解释</p></div><span id="health" class="status">连接中</span></header>
-<main>
+<header><div><h1>宿舍空气质量监测系统</h1><p>环境监测与通风提醒平台</p></div><span id="health" class="status">连接中</span></header>
+<div class="layout"><aside class="sidebar"><div class="sidebar-title">系统菜单</div><a class="nav-item active" href="#overview">▣ 监测总览</a><a class="nav-item" href="#trend">▤ 历史趋势</a><a class="nav-item" href="#alarms">⚠ 告警管理</a><a class="nav-item" href="#settings">⚙ 阈值设置</a></aside><main>
+  <div class="breadcrumb">首页 / 监测总览</div>
   <section class="toolbar">
     <label>设备 <select id="device"><option value="">全部设备</option></select></label>
     <label>趋势指标 <select id="metric"><option value="aq_index">空气指数</option><option value="temp">温度</option><option value="humi">湿度</option><option value="aq_raw">原始ADC</option><option value="lux">光照</option></select></label>
@@ -38,14 +40,14 @@
     <article class="overview-card"><div class="overview-label">最近刷新</div><div id="lastRefresh" class="overview-value" style="font-size:1rem">--</div></article>
   </section>
   <section id="cards" class="grid"></section>
-  <section class="card section"><div class="section-title"><h2>趋势图</h2><span id="chartLabel" class="meta">请选择设备</span></div><canvas id="chart" width="1100" height="280"></canvas></section>
+  <section id="trend" class="card section"><div class="section-title"><h2>历史趋势</h2><span id="chartLabel" class="meta">请选择设备</span></div><canvas id="chart" width="1100" height="280"></canvas></section>
   <section id="settings" class="card section" hidden><div class="section-title"><h2>阈值设置</h2><button id="saveThreshold">保存阈值</button></div><div class="form-grid">
     <label>指标<select id="thresholdMetric"><option value="temp">温度</option><option value="humi">湿度</option><option value="aq_index">空气指数</option></select></label>
     <label>预警上限<input id="warnHi" type="number" step="0.1"></label><label>告警上限<input id="alertHi" type="number" step="0.1"></label>
   </div><p class="notice">阈值用于后端告警落库；实际值应结合宿舍基线校准。低于下限的告警可通过API配置。</p></section>
-  <section class="card section"><div class="section-title"><h2>最近告警</h2><button id="refreshAlarms" class="secondary">刷新</button></div><div id="alarms" class="empty">暂无告警</div></section>
+  <section id="alarms" class="card section"><div class="section-title"><h2>最近告警</h2><button id="refreshAlarms" class="secondary">刷新</button></div><div id="alarmList" class="empty">暂无告警</div></section>
   <section class="card section"><div class="section-title"><h2>设备状态</h2><span class="meta">超过90秒未上报将显示离线</span></div><div class="table-wrap"><table><thead><tr><th>设备</th><th>房间</th><th>在线</th><th>最后上报</th></tr></thead><tbody id="devices"></tbody></table></div></section>
-</main>
+</main></div>
 <div id="toast" class="toast"></div>
 <script>
   const api=`${location.protocol}//${location.hostname}:8000`, $=id=>document.getElementById(id);
@@ -56,7 +58,7 @@
   function airState(value){const n=Number(value);if(!Number.isFinite(n))return ['待采集',''];if(n>2.5)return ['较高','offline'];if(n>1.5)return ['关注','warn'];return ['正常','']}
   function renderCards(rows){$('cards').innerHTML=rows.length?rows.map(x=>{const state=airState(x.aq_index);return `<article class="card"><div class="section-title"><h3>${esc(x.device_id)} · ${esc(x.room)}</h3><span class="status ${state[1]}">${state[0]}</span></div><div class="metric">${esc(x.aq_index)}</div><div class="meta">空气指数 · ${esc(x.flag)}</div><p class="meta">温度：${esc(x.temp)} °C<br>湿度：${esc(x.humi)} %RH<br>原始ADC：${esc(x.aq_raw)}<br>上报：${x.ts?new Date(x.ts*1000).toLocaleString():'--'}</p></article>`}).join(''):'<p class="empty">等待设备上报数据</p>'}
   function renderDevices(rows){$('devices').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.device_id)}</td><td>${esc(x.room)}</td><td><span class="status ${x.online?'':'offline'}">${x.online?'在线':'离线'}</span></td><td>${x.last_seen?new Date(x.last_seen*1000).toLocaleString():'--'}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">暂无设备</td></tr>'}
-  function renderAlarms(rows){$('alarms').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>时间</th><th>设备</th><th>指标</th><th>级别</th><th>数值</th><th>状态</th></tr></thead><tbody>${rows.map(a=>`<tr><td>${new Date(a.ts*1000).toLocaleString()}</td><td>${esc(a.device_id)}</td><td>${esc(a.metric)}</td><td class="${a.level==='L3'?'alarm-high':'alarm-mid'}">${esc(a.level)}</td><td>${esc(a.value)}</td><td>${a.acked?'已确认':`<button class="danger" onclick="ack(${a.id})">确认</button>`}</td></tr>`).join('')}</tbody></table></div>`:'<span class="empty">暂无告警</span>'}
+  function renderAlarms(rows){$('alarmList').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>时间</th><th>设备</th><th>指标</th><th>级别</th><th>数值</th><th>状态</th></tr></thead><tbody>${rows.map(a=>`<tr><td>${new Date(a.ts*1000).toLocaleString()}</td><td>${esc(a.device_id)}</td><td>${esc(a.metric)}</td><td class="${a.level==='L3'?'alarm-high':'alarm-mid'}">${esc(a.level)}</td><td>${esc(a.value)}</td><td>${a.acked?'已确认':`<button class="danger" onclick="ack(${a.id})">确认</button>`}</td></tr>`).join('')}</tbody></table></div>`:'<span class="empty">暂无告警</span>'}
   let toastTimer;
   function toast(message,error=false){const el=$('toast');el.textContent=message;el.className=`toast show${error?' error':''}`;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='toast',2600)}
   function updateOverview(devices,alarms){const online=devices.filter(x=>x.online).length,unacked=alarms.filter(x=>!x.acked).length;$('deviceCount').textContent=devices.length;$('onlineCount').textContent=`${online}/${devices.length}`;$('onlineCount').className=`overview-value ${online===devices.length?'good':online?'warn':'bad'}`;$('alarmCount').textContent=unacked;$('alarmCount').className=`overview-value ${unacked?'bad':'good'}`;$('lastRefresh').textContent=new Date().toLocaleTimeString()}
