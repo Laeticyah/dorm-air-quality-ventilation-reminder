@@ -6,6 +6,7 @@ venv/
 backend/*.db
 backend/*.db-shm
 backend/*.db-wal
+backend/backups/
 .env
 .env.*
 !.env.example
