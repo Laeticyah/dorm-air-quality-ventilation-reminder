@@ -53,8 +53,8 @@ class ReadingIn(BaseModel):
 
 
 class ThresholdUpdate(BaseModel):
-    device_id: str
-    metric: str
+    device_id: str = Field(min_length=1, max_length=64)
+    metric: str = Field(min_length=1, max_length=32)
     warn_lo: float | None = None
     warn_hi: float | None = None
     alert_lo: float | None = None
@@ -381,6 +381,19 @@ def update_threshold(payload: ThresholdUpdate) -> dict[str, Any]:
         )
         db.commit()
     return {"updated": True}
+
+
+@app.get("/api/thresholds")
+def thresholds(device_id: str | None = None) -> list[dict[str, Any]]:
+    with closing(connect_db()) as db:
+        if device_id:
+            rows = db.execute(
+                "SELECT * FROM threshold WHERE device_id=? ORDER BY metric",
+                (device_id,),
+            ).fetchall()
+        else:
+            rows = db.execute("SELECT * FROM threshold ORDER BY device_id, metric").fetchall()
+    return [dict(row) for row in rows]
 
 
 @app.get("/api/config/{device_id}")

@@ -60,6 +60,18 @@ class BackendTests(unittest.TestCase):
         rows = backend.devices()
         self.assertEqual(rows[0]["online"], 0)
 
+    def test_thresholds_can_be_updated_and_read(self) -> None:
+        payload = backend.ThresholdUpdate(
+            device_id="esp32-a1",
+            metric="temp",
+            warn_hi=28.5,
+            alert_hi=30.0,
+        )
+        self.assertEqual(backend.update_threshold(payload)["updated"], True)
+        rows = backend.thresholds("esp32-a1")
+        self.assertEqual(rows[0]["metric"], "temp")
+        self.assertEqual(rows[0]["warn_hi"], 28.5)
+
 
 if __name__ == "__main__":
     unittest.main()
