@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>宿舍空气质量监测</title>
+  <style>
+    :root { --navy:#17324d; --teal:#1d8a78; --line:#d9e2ec; --muted:#65758b; --bg:#f7fafc; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--navy); font-family:system-ui,"Microsoft YaHei",sans-serif; }
+    main { max-width:1100px; margin:0 auto; padding:2rem 1rem; } h1 { margin:.2rem 0 .4rem; }
+    .subtle { color:var(--muted); } .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:1rem; }
+    .card { border:1px solid var(--line); border-radius:14px; padding:1rem; background:#fff; box-shadow:0 2px 8px #17324d0b; }
+    .value { font-size:2rem; font-weight:750; color:var(--teal); margin:.4rem 0; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:1.2rem 0; }
+    select,button { border:1px solid var(--line); border-radius:8px; padding:.55rem .7rem; background:#fff; color:var(--navy); }
+    button { cursor:pointer; } button:hover { border-color:var(--teal); }
+    canvas { width:100%; height:240px; border:1px solid var(--line); border-radius:10px; background:#fff; }
+    table { width:100%; border-collapse:collapse; background:#fff; } th,td { padding:.65rem; border-bottom:1px solid #e8eef3; text-align:left; }
+    .status { padding:.4rem .7rem; border-radius:999px; background:#e4f4ef; color:var(--teal); display:inline-block; }
+    .alarm { color:#b64a4a; } .empty { color:var(--muted); padding:1rem 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>宿舍空气质量监测</h1>
+  <p id="health" class="subtle">正在连接后端...</p>
+  <section id="cards" class="grid"></section>
+  <section class="card" style="margin-top:1rem">
+    <div class="toolbar">
+      <label>设备 <select id="device"></select></label>
+      <label>指标 <select id="metric">
+        <option value="aq_index">空气指数</option><option value="temp">温度</option>
+        <option value="humi">湿度</option><option value="aq_raw">原始ADC</option>
+      </select></label>
+      <label>聚合 <select id="bucket"><option value="1m">1分钟</option><option value="1h">1小时</option><option value="raw">原始</option></select></label>
+      <button id="refresh">刷新</button>
+    </div>
+    <canvas id="chart" width="1000" height="240"></canvas>
+  </section>
+  <section class="card" style="margin-top:1rem">
+    <h2>告警记录</h2><div id="alarms" class="empty">暂无告警</div>
+  </section>
+  <section class="card" style="margin-top:1rem">
+    <h2>设备状态</h2>
+    <table><thead><tr><th>设备</th><th>房间</th><th>在线</th><th>最后上报</th></tr></thead><tbody id="devices"></tbody></table>
+  </section>
+</main>
+<script>
+  const api = `${location.protocol}//${location.hostname}:8000`;
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '--').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function get(path) { const response = await fetch(api + path); if (!response.ok) throw new Error(await response.text()); return response.json(); }
+  function drawChart(points) {
+    const canvas = $('chart'), ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+    ctx.clearRect(0,0,w,h); ctx.strokeStyle = '#d9e2ec'; ctx.lineWidth = 1;
+    for (let i=1;i<5;i++) { const y=i*h/5; ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(w-15,y); ctx.stroke(); }
+    const valid = points.filter(p => p.value !== null); if (!valid.length) return;
+    const values = valid.map(p => Number(p.value)), min = Math.min(...values), max = Math.max(...values);
+    const span = max === min ? 1 : max-min; ctx.strokeStyle = '#1d8a78'; ctx.lineWidth = 3; ctx.beginPath();
+    valid.forEach((p,i) => { const x=40+i*(w-60)/Math.max(valid.length-1,1); const y=h-25-(p.value-min)/span*(h-50); i ? ctx.lineTo(x,y) : ctx.moveTo(x,y); }); ctx.stroke();
+    ctx.fillStyle = '#65758b'; ctx.font = '12px system-ui'; ctx.fillText(max.toFixed(2), 5, 18); ctx.fillText(min.toFixed(2), 5, h-12);
+  }
+  async function refresh() {
+    try {
+      const health = await get('/api/health'); $('health').innerHTML = `<span class="status">API正常</span> MQTT：${health.mqtt ? '已连接' : '未启用（本地模式）'}`;
+      const [latest, devices, alarms] = await Promise.all([get('/api/latest'), get('/api/devices'), get('/api/alarms?limit=20')]);
+      $('cards').innerHTML = latest.length ? latest.map(x => `<article class="card"><h3>${esc(x.device_id)} · ${esc(x.room)}</h3><div class="value">${esc(x.aq_index)}</div><div>空气指数</div><p>温度：${esc(x.temp)} °C<br>湿度：${esc(x.humi)} %RH<br>原始值：${esc(x.aq_raw)}<br>状态：${esc(x.flag)}</p></article>`).join('') : '<p class="empty">等待设备上报数据</p>';
+      $('devices').innerHTML = devices.map(x => `<tr><td>${esc(x.device_id)}</td><td>${esc(x.room)}</td><td>${x.online ? '在线' : '离线'}</td><td>${x.last_seen ? new Date(x.last_seen*1000).toLocaleString() : '--'}</td></tr>`).join('');
+      const current = $('device').value || devices[0]?.device_id || latest[0]?.device_id || '';
+      $('device').innerHTML = devices.map(x => `<option value="${esc(x.device_id)}">${esc(x.device_id)}</option>`).join(''); $('device').value = current;
+      $('alarms').innerHTML = alarms.length ? `<table><thead><tr><th>时间</th><th>设备</th><th>指标</th><th>级别</th><th>数值</th><th>操作</th></tr></thead><tbody>${alarms.map(a => `<tr class="alarm"><td>${new Date(a.ts*1000).toLocaleString()}</td><td>${esc(a.device_id)}</td><td>${esc(a.metric)}</td><td>${esc(a.level)}</td><td>${esc(a.value)}</td><td>${a.acked ? '已确认' : `<button onclick="ack(${a.id})">确认</button>`}</td></tr>`).join('')}</tbody></table>` : '<span class="empty">暂无告警</span>';
+      if (current) { const points = await get(`/api/history?device_id=${encodeURIComponent(current)}&metric=${$('metric').value}&bucket=${$('bucket').value}`); drawChart(points); }
+    } catch (error) { $('health').textContent = `连接失败：${error.message}`; }
+  }
+  async function ack(id) { await fetch(`${api}/api/alarms/${id}/ack`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({acked_by:'web-user'})}); await refresh(); }
+  $('refresh').onclick = refresh; $('device').onchange = refresh; $('metric').onchange = refresh; $('bucket').onchange = refresh; refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

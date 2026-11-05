@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+.env
+.env.*
+!.env.example
+web/_check.js
+data/
+.pio/
+.vscode/
