@@ -292,6 +292,55 @@ class BackendTests(unittest.TestCase):
         self.assertFalse(result["mqtt"])
         self.assertIn("mqtt_configured", result)
 
+    def test_device_status_endpoints_update_state(self) -> None:
+        backend.create_device(
+            backend.DeviceCreate(device_id="esp32-status", room="dorm-304")
+        )
+        online = backend.mark_device_online("esp32-status")
+        offline = backend.mark_device_offline("esp32-status")
+        self.assertTrue(online["online"])
+        self.assertFalse(offline["online"])
+
+    def test_query_range_limit_is_enforced(self) -> None:
+        original = backend.MAX_QUERY_RANGE_SECONDS
+        backend.MAX_QUERY_RANGE_SECONDS = 60
+        try:
+            with self.assertRaises(Exception):
+                backend.history(
+                    "esp32-a1",
+                    metric="co2_ppm",
+                    from_ts=0,
+                    to_ts=61,
+                    bucket="raw",
+                )
+        finally:
+            backend.MAX_QUERY_RANGE_SECONDS = original
+
+    def test_backup_listing_returns_created_backups(self) -> None:
+        original = backend.BACKUP_DIR
+        backend.BACKUP_DIR = Path(self.temp_dir.name) / "backups"
+        try:
+            backend.backup_database()
+            rows = backend.list_backups()
+            self.assertEqual(len(rows), 1)
+            self.assertTrue(rows[0]["name"].startswith("air_monitor_"))
+        finally:
+            backend.BACKUP_DIR = original
+
+    def test_api_key_middleware_protects_api_when_enabled(self) -> None:
+        original = backend.API_KEY
+        backend.API_KEY = "test-key"
+        try:
+            client = TestClient(backend.app)
+            self.assertEqual(client.get("/api/summary").status_code, 401)
+            self.assertEqual(
+                client.get("/api/summary", headers={"X-API-Key": "test-key"}).status_code,
+                200,
+            )
+            self.assertEqual(client.get("/api/health").status_code, 200)
+        finally:
+            backend.API_KEY = original
+
 
 if __name__ == "__main__":
     unittest.main()

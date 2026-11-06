@@ -55,6 +55,16 @@ py .\tools\simulate_device.py --scenario window --count 12 --interval 2
 - `GET /api/export.csv`：导出读数CSV，可用 `device_id`、`from`、`to` 筛选；
 - `GET/POST /api/ventilation-events`：查询和记录通风事件。
 
+## Docker部署
+
+复制`.env.example`为`.env`，按需填写MQTT和`API_KEY`，然后启动：
+
+```powershell
+docker compose up --build
+```
+
+后端默认监听`http://127.0.0.1:8000`，SQLite数据和备份保存在Docker卷中。`deploy/mosquitto.conf`适合本地课程演示；接入真实网络前应关闭匿名MQTT并配置认证/TLS。
+
 ## 下一步接入硬件
 
 真实传感器只需要实现同样的`SensorData`输出，不需要改动`AirMonitor`。根据9周计划，建议先完成W1-W4的本地闭环和MQTT链路，再在W5加入告警确认，在W6-W8完成网页、72小时稳定性和性能测试。

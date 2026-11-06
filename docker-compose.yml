@@ -1,0 +1,35 @@
+name: dorm-air-monitor
+
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      AIR_DB_PATH: /app/data/air_monitor.db
+      BACKUP_DIR: /app/data/backups
+      MQTT_HOST: mosquitto
+    volumes:
+      - air_data:/app/data
+    depends_on:
+      mosquitto:
+        condition: service_started
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+
+volumes:
+  air_data:
+  mqtt_data:
+  mqtt_log:

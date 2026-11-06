@@ -18,9 +18,11 @@ py -m uvicorn backend.app:app --host 0.0.0.0 --port 8000
 - `GET /api/health`
 - `POST /api/maintenance/cleanup`：按保留周期清理原始读数和历史告警
 - `POST /api/maintenance/backup`：创建SQLite数据库备份
+- `GET /api/maintenance/backups`：列出最近数据库备份
 - `POST /api/readings`
 - `GET /api/devices`
 - `POST /api/devices`：手动注册设备
+- `POST /api/devices/{device_id}/online|offline`：手动更新设备状态
 - `GET/PUT /api/devices/{device_id}`：查看和维护设备名称、房间信息
 - `DELETE /api/devices/{device_id}`：删除设备；有历史数据时需显式传`delete_readings=true`
 - `GET /api/latest?device_id=...`
@@ -48,3 +50,5 @@ MQTT订阅主题：`home/+/+/data`，QoS 1。`/api/health`中的`mqtt`表示当�
 数据清理由后台线程按`CLEANUP_INTERVAL_SECONDS`执行，默认原始数据保留30天，可通过`RAW_DATA_RETENTION_DAYS`和`LOG_LEVEL`环境变量配置。
 
 数据库备份默认写入`backups`目录，可通过`BACKUP_DIR`环境变量修改。通风效果以通风前后CO₂下降至少100ppm作为有效的演示判据，实际验收时应结合现场采样间隔校准。
+
+配置`API_KEY`后，除健康检查外的所有`/api/*`接口都要求请求头`X-API-Key`。生产环境应同时配置`CORS_ORIGINS`和`MAX_QUERY_RANGE_SECONDS`，避免开放跨域和超大时间范围查询。

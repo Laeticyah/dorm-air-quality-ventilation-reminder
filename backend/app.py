@@ -18,6 +18,9 @@ except ImportError:  # MQTT is optional for local API-only development.
     mqtt = None
 
 from fastapi import FastAPI, HTTPException, Query
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -38,14 +41,28 @@ CONSECUTIVE_LIMIT = int(os.getenv("CONSECUTIVE_LIMIT", "3"))
 RAW_DATA_RETENTION_DAYS = int(os.getenv("RAW_DATA_RETENTION_DAYS", "30"))
 CLEANUP_INTERVAL_SECONDS = int(os.getenv("CLEANUP_INTERVAL_SECONDS", "86400"))
 BACKUP_DIR = Path(os.getenv("BACKUP_DIR", ROOT / "backups"))
+API_KEY = os.getenv("API_KEY", "")
+MAX_QUERY_RANGE_SECONDS = int(os.getenv("MAX_QUERY_RANGE_SECONDS", str(7 * 86400)))
+CORS_ORIGINS = [item.strip() for item in os.getenv("CORS_ORIGINS", "*").split(",") if item.strip()]
 
 app = FastAPI(title="宿舍空气质量监测 API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS or ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Any) -> Any:
+        if API_KEY and request.url.path.startswith("/api/"):
+            if request.url.path != "/api/health" and request.headers.get("X-API-Key") != API_KEY:
+                return JSONResponse({"detail": "invalid API key"}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(APIKeyMiddleware)
 _db_lock = threading.Lock()
 _mqtt_client: Any = None
 _mqtt_connected = False
@@ -466,6 +483,28 @@ def run_backup() -> dict[str, Any]:
     return {"created": True, "file": str(target)}
 
 
+@app.get("/api/maintenance/backups")
+def list_backups(limit: int = Query(20, ge=1, le=100)) -> list[dict[str, Any]]:
+    if not isinstance(limit, int):
+        limit = 20
+    if not BACKUP_DIR.exists():
+        return []
+    files = sorted(
+        (path for path in BACKUP_DIR.glob("air_monitor_*.db") if path.is_file()),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )[:limit]
+    return [
+        {
+            "file": str(path),
+            "name": path.name,
+            "size": path.stat().st_size,
+            "modified_at": int(path.stat().st_mtime),
+        }
+        for path in files
+    ]
+
+
 def cleanup_loop() -> None:
     while not _cleanup_stop.wait(CLEANUP_INTERVAL_SECONDS):
         try:
@@ -522,6 +561,7 @@ def health() -> dict[str, Any]:
         "mqtt_configured": bool(MQTT_HOST),
         "mqtt_tls": MQTT_TLS,
         "database": db_status,
+        "api_key_enabled": bool(API_KEY),
         "db": str(DB_PATH),
     }
 
@@ -584,6 +624,29 @@ def create_device(payload: DeviceCreate) -> dict[str, Any]:
             raise HTTPException(409, "device already exists") from exc
         db.commit()
     return {"created": True, **payload.model_dump(), "online": 0}
+
+
+@app.post("/api/devices/{device_id}/online")
+def mark_device_online(device_id: str) -> dict[str, Any]:
+    with closing(connect_db()) as db:
+        if db.execute(
+            "SELECT 1 FROM device WHERE device_id=?", (device_id,)
+        ).fetchone() is None:
+            raise HTTPException(404, "device not found")
+    timestamp = int(time.time())
+    update_device_status(device_id, True, timestamp)
+    return {"updated": True, "device_id": device_id, "online": True, "last_seen": timestamp}
+
+
+@app.post("/api/devices/{device_id}/offline")
+def mark_device_offline(device_id: str) -> dict[str, Any]:
+    with closing(connect_db()) as db:
+        if db.execute(
+            "SELECT 1 FROM device WHERE device_id=?", (device_id,)
+        ).fetchone() is None:
+            raise HTTPException(404, "device not found")
+    update_device_status(device_id, False)
+    return {"updated": True, "device_id": device_id, "online": False}
 
 
 @app.get("/api/devices/{device_id}")
@@ -704,6 +767,8 @@ def history(
         raise HTTPException(400, "unsupported metric")
     start = from_ts if from_ts is not None else int(time.time()) - 24 * 3600
     end = to_ts if to_ts is not None else int(time.time())
+    if end - start > MAX_QUERY_RANGE_SECONDS:
+        raise HTTPException(400, "query range exceeds configured limit")
     expression = metric
     if bucket == "1m":
         expression = f"CAST(ts / 60 AS INTEGER) * 60"
@@ -741,6 +806,12 @@ def readings_page(
         to_ts = None
     if from_ts is not None and to_ts is not None and from_ts > to_ts:
         raise HTTPException(400, "from must be less than or equal to to")
+    if (
+        from_ts is not None
+        and to_ts is not None
+        and to_ts - from_ts > MAX_QUERY_RANGE_SECONDS
+    ):
+        raise HTTPException(400, "query range exceeds configured limit")
     clauses = ["1=1"]
     params: list[Any] = []
     if device_id:
@@ -859,6 +930,12 @@ def alarm_page(
         offset = 0
     if from_ts is not None and to_ts is not None and from_ts > to_ts:
         raise HTTPException(400, "from must be less than or equal to to")
+    if (
+        from_ts is not None
+        and to_ts is not None
+        and to_ts - from_ts > MAX_QUERY_RANGE_SECONDS
+    ):
+        raise HTTPException(400, "query range exceeds configured limit")
     clauses = ["1=1"]
     params: list[Any] = []
     if device_id:
